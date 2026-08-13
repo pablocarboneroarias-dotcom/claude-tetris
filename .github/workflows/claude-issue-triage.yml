@@ -42,6 +42,7 @@ jobs:
                  - Diagnóstico técnico: qué función(es)/archivo(s) están probablemente involucrados (p.ej. collide, rotateCW, tryRotate, lockPiece, clearLines, spawn, loop, draw) y por qué.
                  - Una propuesta de aproximación para la solución, en pasos concretos, SIN implementarla todavía.
                  - Si falta información para diagnosticar con certeza (pasos de reproducción, navegador, capturas, etc.), pídela explícitamente.
+                 - El comentario debe estar redactado en formato Markdown (encabezados, listas, bloques de código con \`\`\` para fragmentos de código, etc.) para que se muestre correctamente en GitHub.
 
             No modifiques el título ni el cuerpo del issue, y no hagas cambios de código en esta tarea: solo etiqueta y comenta.
 
