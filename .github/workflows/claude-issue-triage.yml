@@ -1,0 +1,49 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    # Evita reaccionar a issues creados/editados por bots (p.ej. este mismo workflow)
+    if: github.event.sender.type != 'Bot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio (un clon de Tetris en JavaScript vanilla, HTML5 Canvas y CSS) y realiza dos tareas:
+
+            1. Etiquetado
+               - Revisa las labels existentes del repositorio con `gh label list`.
+               - Aplica las que correspondan usando `gh issue edit ${{ github.event.issue.number }} --add-label "nombre-label"`.
+               - Usa ÚNICAMENTE labels que ya existan en el repositorio; no crees labels nuevas.
+               - Si el issue ya tiene alguna label que ya no aplica según el contenido actual, quítala con `--remove-label`.
+
+            2. Diagnóstico técnico
+               - Lee CLAUDE.md para entender la arquitectura del proyecto, y el código fuente relevante (game.js, index.html, style.css) según lo que describa el issue.
+               - Publica un único comentario en el issue con `gh issue comment ${{ github.event.issue.number }} --body "..."` que incluya:
+                 - Un resumen breve del problema o petición, en tus propias palabras.
+                 - Diagnóstico técnico: qué función(es)/archivo(s) están probablemente involucrados (p.ej. collide, rotateCW, tryRotate, lockPiece, clearLines, spawn, loop, draw) y por qué.
+                 - Una propuesta de aproximación para la solución, en pasos concretos, SIN implementarla todavía.
+                 - Si falta información para diagnosticar con certeza (pasos de reproducción, navegador, capturas, etc.), pídela explícitamente.
+
+            No modifiques el título ni el cuerpo del issue, y no hagas cambios de código en esta tarea: solo etiqueta y comenta.
+
+          claude_args: |
+            --allowedTools "Bash(gh label list:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*)"
