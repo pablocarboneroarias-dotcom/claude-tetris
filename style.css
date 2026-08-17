@@ -210,6 +210,49 @@ kbd {
   color: var(--kbd-text);
 }
 
+/* ---- Records ---- */
+.records ol {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--controls-text);
+}
+
+.records li.highlight,
+#overlay-records li.highlight {
+  color: var(--value-color);
+  font-weight: 700;
+}
+
+.records-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--controls-text);
+}
+
+#reset-records-btn {
+  margin-top: 4px;
+  background: transparent;
+  border: 1px solid var(--kbd-border);
+  color: var(--controls-text);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, color 0.15s;
+}
+
+#reset-records-btn:hover {
+  background: var(--kbd-bg);
+  color: var(--text);
+}
+
 /* ---- Overlay ---- */
 .overlay {
   position: absolute;
@@ -263,4 +306,77 @@ kbd {
 
 #restart-btn:hover {
   background: var(--restart-hover);
+}
+
+#restart-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Wins over the #name-entry/#overlay-records ID rules' own `display`, which
+   otherwise outrank the plain `.hidden` class by specificity. */
+#name-entry.hidden,
+#overlay-records.hidden {
+  display: none;
+}
+
+#name-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.name-entry-label {
+  font-size: 13px;
+  color: var(--overlay-score);
+}
+
+#name-input {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  text-align: center;
+  width: 140px;
+}
+
+#name-submit-btn {
+  background: var(--restart-bg);
+  color: var(--restart-text);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+#name-submit-btn:hover {
+  background: var(--restart-hover);
+}
+
+#overlay-records {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+#overlay-records ol {
+  list-style: none;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--controls-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

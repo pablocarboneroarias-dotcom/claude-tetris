@@ -45,11 +45,25 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeSwitch = document.getElementById('theme-switch');
+const highscoreListEl = document.getElementById('highscore-list');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
+const nameEntry = document.getElementById('name-entry');
+const nameInput = document.getElementById('name-input');
+const nameSubmitBtn = document.getElementById('name-submit-btn');
+const overlayRecords = document.getElementById('overlay-records');
+const overlayHighscoreList = document.getElementById('overlay-highscore-list');
 
 const THEME_STORAGE_KEY = 'tetris-theme';
+const HIGHSCORES_STORAGE_KEY = 'tetris-highscores';
+const BEST_COMBO_STORAGE_KEY = 'tetris-best-combo';
+const MAX_LINES_STORAGE_KEY = 'tetris-max-lines';
+const MAX_HIGHSCORES = 5;
 const GRID_COLORS = { dark: '#22222e', light: '#d6d6e4' };
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let combo, maxCombo;
 let currentTheme = 'dark';
 
 function createBoard() {
@@ -114,11 +128,15 @@ function clearLines() {
     }
   }
   if (cleared) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
+  } else {
+    combo = 0;
   }
 }
 
@@ -238,12 +256,89 @@ function applyTheme(theme) {
   if (next) drawNext();
 }
 
+function loadHighScores() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HIGHSCORES_STORAGE_KEY));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(e => e && typeof e.name === 'string' && typeof e.score === 'number');
+  } catch {
+    return [];
+  }
+}
+
+function saveHighScores(list) {
+  localStorage.setItem(HIGHSCORES_STORAGE_KEY, JSON.stringify(list));
+}
+
+function qualifiesForHighScore(list, candidateScore) {
+  return list.length < MAX_HIGHSCORES || candidateScore > list[list.length - 1].score;
+}
+
+function renderRecords(highlightIndex, list) {
+  list = list || loadHighScores();
+  const bestCombo = parseInt(localStorage.getItem(BEST_COMBO_STORAGE_KEY), 10) || 0;
+  const maxLinesEver = parseInt(localStorage.getItem(MAX_LINES_STORAGE_KEY), 10) || 0;
+
+  const renderInto = el => {
+    el.innerHTML = '';
+    list.forEach((entry, i) => {
+      const li = document.createElement('li');
+      li.textContent = `${i + 1}. ${entry.name} — ${entry.score.toLocaleString()}`;
+      if (i === highlightIndex) li.classList.add('highlight');
+      el.appendChild(li);
+    });
+  };
+  renderInto(highscoreListEl);
+  renderInto(overlayHighscoreList);
+
+  bestComboEl.textContent = bestCombo;
+  maxLinesEl.textContent = maxLinesEver;
+}
+
+function showNameEntry() {
+  overlayRecords.classList.add('hidden');
+  nameEntry.classList.remove('hidden');
+  restartBtn.disabled = true;
+  nameInput.value = '';
+  nameInput.focus();
+}
+
+function submitHighScore() {
+  const name = (nameInput.value.trim() || 'AAA').slice(0, 10);
+  const list = loadHighScores();
+  const entry = { name, score, lines, level };
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  list.length = Math.min(list.length, MAX_HIGHSCORES);
+  saveHighScores(list);
+
+  nameEntry.classList.add('hidden');
+  overlayRecords.classList.remove('hidden');
+  restartBtn.disabled = false;
+  renderRecords(list.indexOf(entry), list);
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+
+  const storedMaxLines = parseInt(localStorage.getItem(MAX_LINES_STORAGE_KEY), 10) || 0;
+  if (lines > storedMaxLines) localStorage.setItem(MAX_LINES_STORAGE_KEY, String(lines));
+
+  const storedBestCombo = parseInt(localStorage.getItem(BEST_COMBO_STORAGE_KEY), 10) || 0;
+  if (maxCombo > storedBestCombo) localStorage.setItem(BEST_COMBO_STORAGE_KEY, String(maxCombo));
+
+  const highScores = loadHighScores();
+  renderRecords(-1, highScores);
+
+  if (qualifiesForHighScore(highScores, score)) {
+    showNameEntry();
+  } else {
+    overlayRecords.classList.remove('hidden');
+  }
 }
 
 function togglePause() {
@@ -286,16 +381,22 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  nameEntry.classList.add('hidden');
+  overlayRecords.classList.add('hidden');
+  restartBtn.disabled = false;
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  if (document.activeElement === nameInput) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -326,5 +427,31 @@ themeSwitch.addEventListener('change', () => {
   applyTheme(themeSwitch.checked ? 'light' : 'dark');
 });
 
+nameSubmitBtn.addEventListener('click', submitHighScore);
+nameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter') submitHighScore();
+});
+
+let resetConfirmTimeout = null;
+resetRecordsBtn.addEventListener('click', () => {
+  if (resetRecordsBtn.dataset.confirming === 'true') {
+    localStorage.removeItem(HIGHSCORES_STORAGE_KEY);
+    localStorage.removeItem(BEST_COMBO_STORAGE_KEY);
+    localStorage.removeItem(MAX_LINES_STORAGE_KEY);
+    resetRecordsBtn.textContent = 'Reiniciar récords';
+    resetRecordsBtn.dataset.confirming = 'false';
+    clearTimeout(resetConfirmTimeout);
+    renderRecords(-1);
+  } else {
+    resetRecordsBtn.textContent = '¿Seguro? Confirmar';
+    resetRecordsBtn.dataset.confirming = 'true';
+    resetConfirmTimeout = setTimeout(() => {
+      resetRecordsBtn.textContent = 'Reiniciar récords';
+      resetRecordsBtn.dataset.confirming = 'false';
+    }, 3000);
+  }
+});
+
+renderRecords(-1);
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'dark');
 init();
